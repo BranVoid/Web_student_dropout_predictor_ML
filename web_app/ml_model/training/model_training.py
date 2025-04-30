@@ -18,9 +18,11 @@ from sklearn.metrics import (
 )
 import matplotlib.pyplot as plt
 import joblib
+import os
+os.makedirs("ml_model/saved_models", exist_ok=True)
 
 # 1. Cargar datos
-df = pd.read_csv("../data/synthetic/synthetic_dropout_data.csv")
+df = pd.read_csv("data/synthetic/synthetic_dropout_data.csv")
 X = df.drop("dropout_thought", axis=1)
 y = np.where(df["dropout_thought"] == "Yes", 1, 0)  # 1=Abandono, 0=No abandono
 
@@ -71,11 +73,6 @@ for model_name, model_config in models.items():
     # Entrenar
     pipeline.fit(X_train, y_train)
     
-    # Guardar preprocesador ESPECÍFICO para este modelo
-    joblib.dump(
-        pipeline.named_steps["preprocessor"], 
-        f"../ml_model/saved_models/preprocessor_{model_name.replace(' ', '_').lower()}.pkl"  # Nombre único
-    )
     # Predecir
     y_pred = pipeline.predict(X_test)
     y_proba = pipeline.predict_proba(X_test)[:, 1]
@@ -91,19 +88,23 @@ for model_name, model_config in models.items():
     }
     results.append(metrics)
     
-    # Guardar modelo
-    joblib.dump(pipeline, f"../ml_model/saved_models/{model_name.replace(' ', '_').lower()}.pkl")
-    print(f"{model_name} guardado!")
+    # Guardar modelo Y preprocesador
+    joblib.dump(pipeline, f"ml_model/saved_models/{model_name.replace(' ', '_').lower()}.pkl")
+    joblib.dump(
+        pipeline.named_steps['preprocessor'], 
+        f"ml_model/saved_models/preprocessor_{model_name.replace(' ', '_').lower()}.pkl"
+    )
     
     # Matriz de confusión
     cm = confusion_matrix(y_test, y_pred)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot(cmap="Blues")
     plt.title(f"Matriz de Confusión - {model_name}")
-    plt.savefig(f"../ml_model/saved_models/confusion_matrix_{model_name.replace(' ', '_').lower()}.png")
+    plt.savefig(f"ml_model/saved_models/confusion_matrix_{model_name.replace(' ', '_').lower()}.png")
     plt.close()
 
 # 6. Mostrar resultados comparativos
 results_df = pd.DataFrame(results)
 print("\n📋 Comparación de Modelos:")
 print(results_df.to_markdown(index=False))
+print("Características esperadas:", preprocessor.feature_names_in_)

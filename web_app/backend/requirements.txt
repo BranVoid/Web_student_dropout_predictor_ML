@@ -6,3 +6,4 @@ joblib
 python-dotenv
 matplotlib
 tabulate
+pathlib

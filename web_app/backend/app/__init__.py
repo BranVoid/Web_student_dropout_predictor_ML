@@ -1,7 +1,6 @@
 from flask import Flask
-from .routes import bp
-
 def create_app():
     app = Flask(__name__)
-    app.register_blueprint(bp)
+    from .routes import bp
+    app.register_blueprint(bp)  # Registra en la raíz (/) 👈
     return app

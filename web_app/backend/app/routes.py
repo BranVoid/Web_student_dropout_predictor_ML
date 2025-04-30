@@ -1,34 +1,40 @@
 from flask import Blueprint, request, jsonify
 import pandas as pd
-from .models.load_models import load_model_and_preprocessor  # 👈 Importar la función
+from .models.load_models import load_model
 
 bp = Blueprint('api', __name__)
 
 @bp.route('/predict', methods=['POST'])
 def predict():
-    # 1. Obtener parámetros
-    data = request.get_json()
-    model_name = data.get("model", "xgboost")  # Por defecto usa XGBoost
-    
     try:
-        # 2. Cargar modelo y preprocesador
-        model, preprocessor = load_model_and_preprocessor(model_name)
+        data = request.get_json()
         
-        # 3. Preprocesar datos
-        df = pd.DataFrame([data])
-        processed_data = preprocessor.transform(df)
+        # 1. Cargar el pipeline completo (incluye preprocesador)
+        model_name = data.get("model", "xgboost")
+        pipeline = load_model(model_name)
         
-        # 4. Predecir
-        probability = model.predict_proba(processed_data)[0][1]
+        # 2. Obtener características esperadas del pipeline
+        expected_features = pipeline.named_steps['preprocessor'].feature_names_in_
+        
+        # 3. Validar campos faltantes
+        missing = [feat for feat in expected_features if feat not in data]
+        if missing:
+            return jsonify({"error": f"Campos faltantes: {missing}"}), 400
+        
+        # 4. Crear DataFrame con orden correcto
+        df = pd.DataFrame([data], columns=expected_features)
+        
+        # 5. Predecir usando el pipeline (preprocesa automáticamente)
+        probability = pipeline.predict_proba(df)[0][1]
         
         return jsonify({
+            "risk": float(round(probability, 4)),
             "model": model_name,
-            "risk": round(probability, 4),
             "message": "Success"
         })
     
     except Exception as e:
-        return jsonify({
-            "error": str(e),
-            "model": model_name
-        }), 500
+        return jsonify({"error": str(e)}), 500
+@bp.route('/')
+def home():
+    return "API de Predicción de Deserción Académica - Usa /predict"
