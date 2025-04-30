@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import joblib
 
 # 1. Cargar datos
-df = pd.read_csv("data/synthetic/synthetic_dropout_data.csv")
+df = pd.read_csv("../data/synthetic/synthetic_dropout_data.csv")
 X = df.drop("dropout_thought", axis=1)
 y = np.where(df["dropout_thought"] == "Yes", 1, 0)  # 1=Abandono, 0=No abandono
 
@@ -59,26 +59,23 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 # 5. Entrenar y evaluar cada modelo
 results = []
-used_preprocessor = False  # Bandera para controlar el guardado
-
 for model_name, model_config in models.items():
     print(f"\n🚀 Entrenando {model_name}...")
     
-    # Crear pipeline (usa el preprocesador original)
+    # Crear pipeline con COPIA del preprocesador
     pipeline = Pipeline(steps=[
-        ("preprocessor", preprocessor),  # Usa el ColumnTransformer definido
+        ("preprocessor", preprocessor),  # Usar el ColumnTransformer base
         ("classifier", model_config["model"])
     ])
     
     # Entrenar
     pipeline.fit(X_train, y_train)
-
-    # Guardar el preprocesador SOLO en la primera iteración
-    if not used_preprocessor:
-        joblib.dump(pipeline.named_steps["preprocessor"], "ml_model/saved_models/preprocessor.pkl")
-        print("✅ Preprocesador guardado!")
-        used_preprocessor = True
     
+    # Guardar preprocesador ESPECÍFICO para este modelo
+    joblib.dump(
+        pipeline.named_steps["preprocessor"], 
+        f"../ml_model/saved_models/preprocessor_{model_name.replace(' ', '_').lower()}.pkl"  # Nombre único
+    )
     # Predecir
     y_pred = pipeline.predict(X_test)
     y_proba = pipeline.predict_proba(X_test)[:, 1]
@@ -95,7 +92,7 @@ for model_name, model_config in models.items():
     results.append(metrics)
     
     # Guardar modelo
-    joblib.dump(pipeline, f"ml_model/saved_models/{model_name.replace(' ', '_').lower()}.pkl")
+    joblib.dump(pipeline, f"../ml_model/saved_models/{model_name.replace(' ', '_').lower()}.pkl")
     print(f"{model_name} guardado!")
     
     # Matriz de confusión
@@ -103,7 +100,7 @@ for model_name, model_config in models.items():
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot(cmap="Blues")
     plt.title(f"Matriz de Confusión - {model_name}")
-    plt.savefig(f"ml_model/saved_models/confusion_matrix_{model_name.replace(' ', '_').lower()}.png")
+    plt.savefig(f"../ml_model/saved_models/confusion_matrix_{model_name.replace(' ', '_').lower()}.png")
     plt.close()
 
 # 6. Mostrar resultados comparativos
