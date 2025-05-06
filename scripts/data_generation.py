@@ -26,7 +26,7 @@ districts_lima = [
 # Generación de datos
 data = {
     # --- 1. Datos Generales ---
-    "gender": np.random.choice(["Male", "Female"], n_samples, p=[0.55, 0.45]),
+    "gender": np.random.choice(["Male", "Female"], n_samples, p=[0.85, 0.15]),
     "age": np.random.randint(17, 35, n_samples),
     "marital_status": np.random.choice(["Single", "Married", "Divorced"], n_samples, p=[0.85, 0.1, 0.05]),
     "disability": np.random.choice(["Yes", "No"], n_samples, p=[0.05, 0.95]),
@@ -96,7 +96,57 @@ data["dropout_reason"] = [fake.sentence(nb_words=10) if dropout == "Yes" else ""
 
 # Crear DataFrame y guardar
 df = pd.DataFrame(data)
+def add_noise(df, noise_level=0.05):
+    """
+    Agrega tres tipos de ruido al dataset:
+    1. Ruido categórico: Cambia valores en variables categóricas
+    2. Ruido numérico: Perturbaciones en variables numéricas
+    3. Valores faltantes: Introduce NaN en random
+    """
+    df_noised = df.copy()
+    n_samples = len(df)
+    
+    # 1. Ruido en variables categóricas (ej: 5% de valores cambiados)
+    categorical_cols = ['gender', 'marital_status', 'academic_program']
+    for col in categorical_cols:
+        mask = np.random.rand(n_samples) < noise_level
+        if col == 'gender':
+            df_noised.loc[mask, col] = np.random.choice(["Male", "Female"], sum(mask))
+        elif col == 'marital_status':
+            df_noised.loc[mask, col] = np.random.choice(["Single", "Married", "Divorced"], sum(mask))
+        # ... agregar lógica para otras columnas
+
+    # 2. Ruido en variables numéricas (distribución normal)
+    numerical_cols = ['age', 'current_semester', 'household_members']
+    for col in numerical_cols:
+        noise = np.random.normal(0, 1, n_samples)  # Ajustar escala según columna
+        df_noised[col] = df_noised[col] + noise.round().astype(int)
+        
+        # Mantener dentro de rangos válidos
+        if col == 'age':
+            df_noised[col] = df_noised[col].clip(17, 35)
+        elif col == 'current_semester':
+            df_noised[col] = df_noised[col].clip(1, 10)
+
+    # 3. Valores faltantes (5% de datos)
+    missing_mask = np.random.rand(*df.shape) < noise_level
+    df_noised = df_noised.mask(missing_mask)
+    
+    return df_noised
+
+# Aplicar ruido (5% en todos los tipos)
+df = add_noise(df, noise_level=0.05)
+
+# =============================================
+# Guardar datos con ruido
+# =============================================
+
 df.to_csv('synthetic_dropout_data.csv', index=False)
+print("¡Data sintética CON RUIDO generada con éxito!")
+print("Muestra del dataset con ruido:")
+print(df.head(3))
+
+# =============================================
 
 print("¡Data sintética en inglés generada con éxito! Muestra del dataset:")
 print(df.head(3))
