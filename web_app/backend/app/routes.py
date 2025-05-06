@@ -1,8 +1,20 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_from_directory
+import os
 import pandas as pd
 from .models.load_models import load_model
 
 bp = Blueprint('api', __name__)
+
+# Ruta al frontend
+FRONTEND_FOLDER = os.path.join(os.path.dirname(__file__), '../../frontend')
+
+@bp.route('/', methods=['GET'])
+def serve_frontend():
+    return send_from_directory(FRONTEND_FOLDER, 'index.html')
+
+@bp.route('/<path:path>', methods=['GET'])
+def serve_static(path):
+    return send_from_directory(FRONTEND_FOLDER, path)
 
 @bp.route('/predict', methods=['POST'])
 def predict():
